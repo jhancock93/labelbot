@@ -6,11 +6,23 @@ const schema = require('../lib/schema')
 
 const { Probot } = require('probot')
 // Requiring our fixtures
-// const payload = require('./fixtures/issues.opened')
+const pullRequest1 = require('./fixtures/pull_request_docs.opened.json')
 // const validConfig = require('./fixtures/validConfiguration.yml')
 // const issueCreatedBody = { body: 'Thanks for opening this issue!' }
 const fs = require('fs')
 const path = require('path')
+
+describe('schema validation tests', () => {
+  test('schema validates correct format', () => {
+    Joi.assert({ pathLabels: { frontend: ['*.js'], docs: ['*.md', '*.txt'] } }, schema)
+  }
+  )
+
+  test('pathLabels requires non-empty array for label', () => {
+    const func = () => { Joi.assert({ pathLabels: { frontend: ['*.js'], docs: [] } }, schema) }
+    expect(func).toThrow()
+  })
+})
 
 describe('My Probot app', () => {
   let probot
@@ -26,21 +38,27 @@ describe('My Probot app', () => {
 
   beforeEach(() => {
     nock.disableNetConnect()
-    probot = new Probot({ id: 123, cert: mockCert })
+    probot = new Probot({ id: 123, cert: mockCert, githubToken: 'test' })
     // Load our app into probot
     probot.load(myProbotApp)
   })
 
-  test('schema validates correct format', () => {
-    Joi.assert({ pathLabels: { frontend: ['*.js'], docs: ['*.md', '*.txt'] } }, schema)
-  }
-  )
+  test('tests that a label is added based on markdown change', async () => {
+    // Test that we correctly return a test token
+    nock('https://api.github.com')
+      .post('/app/installations/60731/access_tokens')
+      .reply(200, { token: 'test' })
 
-  test('pathLabels requires non-empty array for label', () => {
-    const func = () => { Joi.assert({ pathLabels: { frontend: ['*.js'], docs: [] } }, schema) }
-    expect(func).toThrow()
+    // Test that a label is applied
+    nock('https://api.guthub.com')
+      .patch('/repos/jhancock93/probot-test/issues/1', (body) => {
+        expect(body).toMatchObject({ labels: ['docs'] })
+        return true
+      })
+      .reply(200)
+
+    await probot.receive({ name: 'pull_request', pullRequest1 })
   })
-
   /*
   test('creates a comment when an issue is opened', async () => {
     // Test that we correctly return a test token

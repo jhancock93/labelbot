@@ -20,4 +20,4 @@ For more, check out the [Contributing Guide](CONTRIBUTING.md).
 
 ## License
 
-[ISC](LICENSE) © 2020 John Hancock <jhancock93@gmail.com>
+[ISC](LICENSE) © 2020 John Hancock
