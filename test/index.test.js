@@ -1,10 +1,14 @@
+const Joi = require('@hapi/joi')
 const nock = require('nock')
 // Requiring our app implementation
 const myProbotApp = require('..')
+const schema = require('../lib/schema')
+
 const { Probot } = require('probot')
 // Requiring our fixtures
-const payload = require('./fixtures/issues.opened')
-const issueCreatedBody = { body: 'Thanks for opening this issue!' }
+// const payload = require('./fixtures/issues.opened')
+// const validConfig = require('./fixtures/validConfiguration.yml')
+// const issueCreatedBody = { body: 'Thanks for opening this issue!' }
 const fs = require('fs')
 const path = require('path')
 
@@ -27,6 +31,17 @@ describe('My Probot app', () => {
     probot.load(myProbotApp)
   })
 
+  test('schema validates correct format', () => {
+    Joi.assert({ pathLabels: { frontend: ['*.js'], docs: ['*.md', '*.txt'] } }, schema)
+  }
+  )
+
+  test('pathLabels requires non-empty array for label', () => {
+    const func = () => { Joi.assert({ pathLabels: { frontend: ['*.js'], docs: [] } }, schema) }
+    expect(func).toThrow()
+  })
+
+  /*
   test('creates a comment when an issue is opened', async () => {
     // Test that we correctly return a test token
     nock('https://api.github.com')
@@ -44,7 +59,7 @@ describe('My Probot app', () => {
     // Receive a webhook event
     await probot.receive({ name: 'issues', payload })
   })
-
+*/
   afterEach(() => {
     nock.cleanAll()
     nock.enableNetConnect()
