@@ -1,0 +1,6 @@
+branchLabels:
+  release: ['release-*']
+
+pathLabels:
+  docs: ['*.md']
+  config: ['*.yml']

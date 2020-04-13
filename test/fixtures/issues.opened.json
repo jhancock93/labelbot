@@ -3,13 +3,13 @@
   "issue": {
     "number": 1,
     "user": {
-      "login": "hiimbex"
+      "login": "jhancock93"
     }
   },
   "repository": {
-    "name": "testing-things",
+    "name": "probot-test",
     "owner": {
-      "login": "hiimbex"
+      "login": "jhancock93"
     }
   }
 }
