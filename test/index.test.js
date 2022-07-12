@@ -6,23 +6,48 @@ const schema = require('../lib/schema')
 
 const { Probot } = require('probot')
 // Requiring our fixtures
-const pullRequest1 = require('./fixtures/pull_request_docs.opened.json')
+const pullRequest1 = require('./fixtures/pull_request_master.opened.json')
+
 // const validConfig = require('./fixtures/validConfiguration.yml')
-// const issueCreatedBody = { body: 'Thanks for opening this issue!' }
+
 const fs = require('fs')
 const path = require('path')
 
 describe('schema validation tests', () => {
   test('schema validates correct format', () => {
     Joi.assert({ pathLabels: { frontend: ['*.js'], docs: ['*.md', '*.txt'] } }, schema)
-  }
-  )
+  })
 
   test('pathLabels requires non-empty array for label', () => {
     const func = () => { Joi.assert({ pathLabels: { frontend: ['*.js'], docs: [] } }, schema) }
     expect(func).toThrow()
   })
+
+  test('branchLabels accepts tags with regex values', () => {
+    Joi.assert({ branchLabels: { release: 'release-.*', trunk: '(master|develop)' } }, schema)
+  })
 })
+
+function doNockGetAccessToken () {
+  // Test that we correctly return a test token
+  nock('https://api.github.com')
+    .log(console.log)
+    .post('/app/installations/60731/access_tokens')
+    .reply(200, { token: 'test' })
+}
+
+function doNockConfigRequests () {
+  // bot will try to read config file from repo
+  nock('https://api.github.com')
+    .get('/repos/jhancock93/probot-test/contents/.github/labelbot.yml')
+    .reply(404)
+  // .reply(200, validConfig)
+
+  // next, bot will try .github repo for .github/labelbot.yml
+  nock('https://api.github.com')
+    .get('/repos/jhancock93/.github/contents/.github/labelbot.yml')
+    .reply(404)
+}
 
 describe('My Probot app', () => {
   let probot
@@ -40,14 +65,28 @@ describe('My Probot app', () => {
     nock.disableNetConnect()
     probot = new Probot({ id: 123, cert: mockCert, githubToken: 'test' })
     // Load our app into probot
-    probot.load(myProbotApp)
+    const app = probot.load(myProbotApp)
+
+    // just return a test token
+    app.app = () => 'test'
   })
 
+
   test('tests that a label is added based on markdown change', async () => {
+    // files that include a markdown file
+    const prFilesMarkdown = require('./fixtures/prFiles-markdown.json')
+
     // Test that we correctly return a test token
     nock('https://api.github.com')
       .post('/app/installations/60731/access_tokens')
       .reply(200, { token: 'test' })
+
+    doNockConfigRequests()
+
+    nock('https://api.github.com')
+      .log(console.log)
+      .get('/repos/jhancock93/probot-test/pulls/1/files')
+      .reply(200, prFilesMarkdown.data)
 
     // Test that a label is applied
     nock('https://api.guthub.com')
@@ -57,27 +96,40 @@ describe('My Probot app', () => {
       })
       .reply(200)
 
-    await probot.receive({ name: 'pull_request', pullRequest1 })
+    await probot.receive({ name: 'pull_request', payload: pullRequest1 })
+    console.error('pending mocks: %j', nock.pendingMocks())
+    expect(nock.isDone()).toBe(true)
   })
+
+
   /*
-  test('creates a comment when an issue is opened', async () => {
-    // Test that we correctly return a test token
-    nock('https://api.github.com')
-      .post('/app/installations/2/access_tokens')
-      .reply(200, { token: 'test' })
+    test('tests that a label is added based on target branch', async () => {
+      const pullRequestReleaseBranch = require('./fixtures/pull_request_targetBranch.opened.json')
+      const prFilesOther = require('./fixtures/prFiles-other.json')
+  
+      // doNockGetAccessToken()
+      doNockConfigRequests()
+  
+      nock('https://api.github.com')
+        .log(console.log)
+        .get('/repos/jhancock93/probot-test/pulls/2/files')
+        .reply(200, prFilesOther.data)
+  
+      // Test that a branch-based label is applied
+      nock('https://api.guthub.com')
+        .log(console.log)
+        .patch('/repos/jhancock93/probot-test/issues/2', (body) => {
+          expect(body).toMatchObject({ labels: ['release'] })
+          return true
+        })
+        .reply(200)
+  
+      await probot.receive({ name: 'pull_request', payload: pullRequestReleaseBranch })
+      console.error('pending mocks: %j', nock.pendingMocks())
+      expect(nock.isDone()).toBe(true)
+    })
+  */
 
-    // Test that a comment is posted
-    nock('https://api.github.com')
-      .post('/repos/hiimbex/testing-things/issues/1/comments', (body) => {
-        expect(body).toMatchObject(issueCreatedBody)
-        return true
-      })
-      .reply(200)
-
-    // Receive a webhook event
-    await probot.receive({ name: 'issues', payload })
-  })
-*/
   afterEach(() => {
     nock.cleanAll()
     nock.enableNetConnect()

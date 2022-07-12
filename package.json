@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "description": "A GitHub PR labeler app built with Probot.",
-  "author": "John Hancock <jhancock93@gmail.com>",
+  "author": "John Hancock <jhancock93@users.noreply.github.com",
   "license": "ISC",
   "repository": "https://github.com/jhancock93/labelbot.git",
   "homepage": "https://github.com/jhancock93/labelbot",
@@ -23,6 +23,7 @@
   "dependencies": {
     "@hapi/joi": "^17.1.1",
     "ignore": "^3.3.3",
+    "npx": "^10.2.2",
     "probot": "^9.5.3",
     "probot-config": "^1.0.1"
   },
